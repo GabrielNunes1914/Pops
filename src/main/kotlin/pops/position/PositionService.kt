@@ -1,8 +1,10 @@
 package pops.position
 
-import org.springframework.http.HttpStatus
+import jakarta.persistence.EntityNotFoundException
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
+import pops.exception.DuplicateNameException
+import pops.exception.ReferentialIntegrityException
 import pops.level.LevelRepository
 
 @Service
@@ -15,13 +17,17 @@ class PositionService(
     fun findAll(): List<Position> = repository.findAll()
 
     fun findById(id: Long): Position = repository.findById(id)
-        .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "Position not found with id: $id") }
+        .orElseThrow { EntityNotFoundException("Position not found with id: $id") }
 
-    fun create(position: Position): Position = repository.save(position)
+    fun create(position: Position): Position {
+        if (repository.existsByName(position.name)) {
+            throw DuplicateNameException("The name '${position.name}' is already in use.")
+        }
+        return repository.save(position)
+    }
 
     fun partialUpdate(id: Long, updates: Map<String, Any>): Position {
-        val position = positionRepository.findById(id)
-            .orElseThrow { RuntimeException("Position not found") }
+        val position = findById(id)
 
         val updated = position.copy(
             name = (updates["name"] as? String) ?: position.name,
@@ -29,13 +35,21 @@ class PositionService(
             level = updates["level_id"]?.let {
                 val levelId = (it as Number).toLong()
                 levelRepository.findById(levelId)
-                    .orElseThrow { RuntimeException("Level not found with id $levelId") }
+                    .orElseThrow { EntityNotFoundException("Level not found with id $levelId") }
             } ?: position.level
         )
 
         return positionRepository.save(updated)
     }
 
+    fun delete(id: Long) {
+        val position = repository.findById(id)
+            .orElseThrow { EntityNotFoundException("Position not found with id: $id") }
 
-    fun delete(id: Long) = repository.deleteById(id)
+        try {
+            repository.delete(position)
+        } catch (ex: DataIntegrityViolationException) {
+            throw ReferentialIntegrityException("It is not possible to delete the position with id $id, as it is linked to one or more people.")
+        }
+    }
 }

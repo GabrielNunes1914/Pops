@@ -23,7 +23,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(EntityNotFoundException::class)
     fun handleEntityNotFound(ex: EntityNotFoundException, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
         val error = ErrorResponse(
-            message = ex.message ?: "Recurso não encontrado",
+            message = ex.message ?: "Resource not found",
             status = HttpStatus.NOT_FOUND.value(),
             path = request.requestURI
         )
@@ -34,7 +34,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(ReferentialIntegrityException::class)
     fun handleReferentialIntegrity(ex: ReferentialIntegrityException, request: HttpServletRequest): ResponseEntity<ErrorResponse> {
         val error = ErrorResponse(
-            message = ex.message ?: "Entidade vinculada não pode ser excluída.",
+                message = ex.message ?: "Linked entity cannot be deleted.",
             status = HttpStatus.CONFLICT.value(),
             path = request.requestURI
         )
